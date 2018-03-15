@@ -15,6 +15,7 @@
 #include <utility>
 
 // Project includes
+#include "Barrier.hpp"
 #include "md5.h"
 
 typedef std::map<uint64_t, uint64_t> MD5_Map;
@@ -36,8 +37,10 @@ void svc(uint64_t id,
          uint32_t loop_iterations,
          const std::stringstream & buffer,
          Thread_Cont & thread_cont,
-         std::mutex & m) {
+         Barrier & barrier) {
 
+    // Wait for all the threads to be created before starting
+    barrier.wait(id);
     for (uint32_t i = 0; i < loop_iterations; ++i) {
         std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
 
@@ -46,6 +49,12 @@ void svc(uint64_t id,
 
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
         uint64_t time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+
+
+        // std::cout << "Thread N°" << id 
+        //           << " - Time Elapsed: " << time_elapsed 
+        //           << " - Thread Cont: " << thread_cont[id] 
+        //           << std::endl;
         thread_cont[id] += time_elapsed;
     }
 }
@@ -53,10 +62,10 @@ void svc(uint64_t id,
 
 int main(int argc, char* argv[]) {
     std::vector<std::thread> workers;
-    std::mutex m;
   
     if (argc != 4) {
-        std::cout << "Two argument must be given to the program. Aborting." << std::endl;
+        std::cout << "Usage: " << std::endl;
+        std::cout << "\t./test [AMOUNT_THREADS] [LOOP_ITERATIONS] [FILE_TO_PROCESS]" << std::endl;
         exit(1);
     }
 
@@ -72,6 +81,7 @@ int main(int argc, char* argv[]) {
 
     // Create N threads and measure the time it takes to create every of them
     uint64_t thread_creation_time = 0;
+    Barrier barrier(amount_threads);
     for (uint64_t i = 0; i < amount_threads; ++i) {
         std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
         workers.push_back(std::thread(svc, 
@@ -79,7 +89,7 @@ int main(int argc, char* argv[]) {
                                       loop_iterations,
                                       std::ref(buffer),
                                       std::ref(thread_cont), 
-                                      std::ref(m)));
+                                      std::ref(barrier)));
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
         thread_creation_time += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
     }
@@ -99,7 +109,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Compute the avg. time of all threads 
-    std::cout << "Avg. Context Switch time per thread: " 
+    std::cout << "Avg. Loop time per thread: " 
               << (float) total_avg_time / amount_threads
               << " us." << std::endl;
     return 0;

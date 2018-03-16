@@ -41,22 +41,18 @@ void svc(uint64_t id,
 
     // Wait for all the threads to be created before starting
     barrier.wait(id);
+    std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
     for (uint32_t i = 0; i < loop_iterations; ++i) {
-        std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
-
-        // Avg. time: ~40us
         std::string md5_digest(md5(buffer.str()));
-
-        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-        uint64_t time_elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-
-
-        // std::cout << "Thread N°" << id 
-        //           << " - Time Elapsed: " << time_elapsed 
-        //           << " - Thread Cont: " << thread_cont[id] 
-        //           << std::endl;
-        thread_cont[id] += time_elapsed;
     }
+
+
+    // std::cout << "Thread N°" << id 
+    //           << " - Time Elapsed: " << time_elapsed 
+    //           << " - Thread Cont: " << thread_cont[id] 
+    //           << std::endl;
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    thread_cont[id] = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 }
 
 
@@ -80,19 +76,19 @@ int main(int argc, char* argv[]) {
     read_file(buffer, argv[3]);
 
     // Create N threads and measure the time it takes to create every of them
-    uint64_t thread_creation_time = 0;
     Barrier barrier(amount_threads);
+
+    std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
     for (uint64_t i = 0; i < amount_threads; ++i) {
-        std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
         workers.push_back(std::thread(svc, 
                                       i,
                                       loop_iterations,
                                       std::ref(buffer),
                                       std::ref(thread_cont), 
                                       std::ref(barrier)));
-        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-        thread_creation_time += std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
     }
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    uint64_t thread_creation_time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 
     // Wait for the threads to finish
     for (auto& worker : workers) {

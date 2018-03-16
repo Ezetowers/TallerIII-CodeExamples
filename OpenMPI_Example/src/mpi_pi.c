@@ -7,8 +7,8 @@
 #include <time.h>
 #include <mpi.h>
 
-#define N 4E8
-#define d 0.25E-8
+#define N 1E9
+#define d 1E-9
 
 int main (int argc, char* argv[])
 {
@@ -57,10 +57,10 @@ int main (int argc, char* argv[])
     end = MPI_Wtime();
     
     //Caculate and print PI
-    if (rank==0)
+    if (rank==0) 
     {
         pi=4*sum*d;
-        printf("np=%2d;    Time=%fs;    PI=%0.12f\n", size, end-begin, pi);
+        printf("rank=%d    np=%2d;    Time=%fs;    PI=%0.12f\n", rank, size, end-begin, pi);
     }
     
     error=MPI_Finalize();
